@@ -1,0 +1,11 @@
+{
+  "name": "Elixir",
+  "dockerFile": "Dockerfile",
+  "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.shell.linux": "bash"
+        }
+      }
+  }
+}

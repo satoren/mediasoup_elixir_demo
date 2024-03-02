@@ -20,6 +20,30 @@ config :mediasoup_elixir_demo, MediasoupElixirDemoWeb.Endpoint,
     tailwind: {Tailwind, :install_and_run, [:mediasoup_elixir_demo, ~w(--watch)]}
   ]
 
+config :mediasoup_elixir_demo, MediasoupElixirDemoWeb.SFURouter,
+  pipe_transport: [
+    announced_ip: "127.0.0.1"
+  ],
+  webrtc_server: [
+    listen_infos: [
+      %{
+        ip: "0.0.0.0",
+        announcedIp: "127.0.0.1",
+        protocol: :udp
+      },
+      %{
+        ip: "0.0.0.0",
+        announcedIp: "127.0.0.1",
+        protocol: :tcp
+      }
+    ]
+  ],
+  worker: %{
+    rtcMinPort: 10000,
+    rtcMaxPort: 10100,
+    logLevel: :debug
+  }
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed

@@ -9,10 +9,13 @@ defmodule MediasoupElixirDemo.Application do
   def start(_type, _args) do
     children = [
       MediasoupElixirDemoWeb.Telemetry,
-      {DNSCluster, query: Application.get_env(:mediasoup_elixir_demo, :dns_cluster_query) || :ignore},
+      MediasoupElixirDemoWeb.RouterGroup,
+      {DNSCluster,
+       query: Application.get_env(:mediasoup_elixir_demo, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: MediasoupElixirDemo.PubSub},
       # Start a worker by calling: MediasoupElixirDemo.Worker.start_link(arg)
       # {MediasoupElixirDemo.Worker, arg},
+      MediasoupElixirDemoWeb.UserPresence,
       # Start to serve requests, typically the last entry
       MediasoupElixirDemoWeb.Endpoint
     ]
