@@ -77,9 +77,8 @@ function RoomUser({
 	const producers = user.metas.flatMap((meta) => {
 		if (meta.kind === "producer") {
 			return [meta.producer];
-		} else {
-			return [];
 		}
+		return [];
 	});
 
 	const audioConsume = useMemo(
@@ -161,5 +160,6 @@ const AudioConsume = ({
 		};
 	}, [producerId, roomChannel]);
 
+	// biome-ignore lint/a11y/useMediaCaption: live voice chat audio has no captions
 	return <audio ref={audioRef} autoPlay playsInline />;
 };
