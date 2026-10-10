@@ -463,6 +463,6 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
 
   defp get_local_ip(_other_router_pid) do
     conf = Application.get_env(:mediasoup_elixir_demo, __MODULE__)
-    conf[:pipe_transports][:announced_ip]
+    conf[:pipe_transport][:announced_ip]
   end
 end
