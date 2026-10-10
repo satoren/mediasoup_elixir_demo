@@ -107,8 +107,8 @@ defmodule MediasoupElixirDemoWeb.RoomChannel do
              kind: kind,
              rtp_parameters: rtp_parameters
            }) do
-      # TODO: Should it be done in a library?
-      #      Producer.event(producer, producer.pid, [:on_close])
+      # Unlike consumers, no on_close listener is needed: the producer process is
+      # supervised by its transport and stops when the transport closes.
       SFURouter.register_producer(socket.assigns.router, producer)
 
       UserPresence.track(
