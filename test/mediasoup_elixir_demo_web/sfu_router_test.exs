@@ -66,6 +66,21 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
       })
   end
 
+  test "producer stops and is unregistered when its transport closes" do
+    {:ok, router_group1} = SFURouter.start("producer transport close")
+    Process.link(router_group1)
+
+    {:ok, transport} = SFURouter.create_webrtc_transport(router_group1)
+    {:ok, producer} = WebRtcTransport.produce(transport, audio_producer_options())
+    :ok = SFURouter.register_producer(router_group1, producer)
+
+    ref = Process.monitor(producer.pid)
+    WebRtcTransport.close(transport)
+
+    assert_receive {:DOWN, ^ref, :process, _object, _reason}
+    assert_eventually(fn -> :syn.lookup(:sfu_producers, producer.id) == :undefined end)
+  end
+
   test "pipe consume fails for unregistered producer" do
     group_id = "unregistered producer"
     {:ok, router_group1} = SFURouter.start(group_id)
