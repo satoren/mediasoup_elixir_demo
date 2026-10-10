@@ -70,6 +70,14 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
     GenServer.call(router, {:try_pipe_consume, producer_id})
   end
 
+  @doc """
+  Notifies the router of a consumer created on its transports.
+  Pipe producers are closed once all consumers of them are gone.
+  """
+  def track_consumer(router, %Consumer{} = consumer) do
+    GenServer.cast(router, {:track_consumer, consumer})
+  end
+
   def produce(router, transport_id, producer_option = %Producer.Options{}) do
     GenServer.call(router, {:produce, transport_id, producer_option})
   end
@@ -111,6 +119,10 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
        webrtc_server: webrtc_server,
        webrtc_transport_owner_monitor_refs: %{},
        pipe_transports: pipe_transports,
+       # producer_id => %{producer: Producer.t(), monitor_ref: reference(), consumer_count: integer}
+       pipe_producers: %{},
+       # monitor ref => {:pipe_producer | :pipe_consumer, producer_id}
+       pipe_monitor_refs: %{},
        group_monitor_ref: ref,
        user_process_refs: [Process.monitor(Keyword.fetch!(init_arg, :user_process))]
      }, @timeout}
@@ -177,6 +189,8 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
         paused: Consumer.producer_paused?(consumer)
       }
 
+      # Consumers of a pipe producer may be pipe consumers for another router (multi-stage pipe).
+      state = track_pipe_consumer(state, consumer)
       {:reply, {:ok, {consumer, pipe_produce_option, self()}}, state, @timeout}
     else
       :error ->
@@ -205,6 +219,10 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
   end
 
   @impl true
+  def handle_cast({:track_consumer, consumer}, state) do
+    {:noreply, track_pipe_consumer(state, consumer), @timeout}
+  end
+
   def handle_cast(
         {:create_pipe_transport,
          %{
@@ -241,6 +259,23 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
       {:stop, :shutdown, state}
     else
       {:noreply, state, @timeout}
+    end
+  end
+
+  def handle_info(
+        {:DOWN, ref, :process, _pid, _},
+        %{pipe_monitor_refs: pipe_monitor_refs} = state
+      )
+      when is_map_key(pipe_monitor_refs, ref) do
+    {{type, producer_id}, pipe_monitor_refs} = Map.pop(pipe_monitor_refs, ref)
+    state = %{state | pipe_monitor_refs: pipe_monitor_refs}
+
+    case type do
+      :pipe_producer ->
+        {:noreply, update_in(state.pipe_producers, &Map.delete(&1, producer_id)), @timeout}
+
+      :pipe_consumer ->
+        {:noreply, release_pipe_producer(state, producer_id), @timeout}
     end
   end
 
@@ -305,14 +340,70 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
     pipe_transport
   end
 
+  defp try_consume_with_pipe(%{pipe_producers: pipe_producers} = state, producer_id)
+       when is_map_key(pipe_producers, producer_id) do
+    {:ok, state}
+  end
+
   defp try_consume_with_pipe(state, producer_id) do
     case start_pipe_produce(state, producer_id) do
-      {:ok, {_producer, _consumer}} ->
-        # TODO:　Pipe Producer & Consumer should be closed when consumer is gone.
+      {:ok, {producer, _consumer}} ->
+        ref = Process.monitor(producer.pid)
+
+        state =
+          state
+          |> put_in([:pipe_producers, producer_id], %{
+            producer: producer,
+            monitor_ref: ref,
+            consumer_count: 0
+          })
+          |> put_in([:pipe_monitor_refs, ref], {:pipe_producer, producer_id})
+
         {:ok, state}
 
       {:error, reason} ->
         {:error, reason, state}
+    end
+  end
+
+  defp track_pipe_consumer(
+         %{pipe_producers: pipe_producers} = state,
+         %Consumer{producer_id: producer_id} = consumer
+       )
+       when is_map_key(pipe_producers, producer_id) do
+    ref = Process.monitor(consumer.pid)
+
+    state
+    |> update_in([:pipe_producers, producer_id, :consumer_count], &(&1 + 1))
+    |> put_in([:pipe_monitor_refs, ref], {:pipe_consumer, producer_id})
+  end
+
+  defp track_pipe_consumer(state, _consumer), do: state
+
+  defp release_pipe_producer(state, producer_id) do
+    case Map.fetch(state.pipe_producers, producer_id) do
+      {:ok, %{consumer_count: 1, producer: producer, monitor_ref: ref}} ->
+        Process.demonitor(ref, [:flush])
+
+        # Closing the pipe producer also closes the pipe consumer on the source router.
+        try do
+          Producer.close(producer)
+        catch
+          # Already closed along with the source producer.
+          :exit, _ -> :ok
+        end
+
+        %{
+          state
+          | pipe_producers: Map.delete(state.pipe_producers, producer_id),
+            pipe_monitor_refs: Map.delete(state.pipe_monitor_refs, ref)
+        }
+
+      {:ok, _} ->
+        update_in(state, [:pipe_producers, producer_id, :consumer_count], &(&1 - 1))
+
+      :error ->
+        state
     end
   end
 
