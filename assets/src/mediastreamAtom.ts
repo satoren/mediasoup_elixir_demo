@@ -21,9 +21,9 @@ export const createMediaStreamAtom = <T>(f: FetchStreamFunction<T>) => {
 		return () => {
 			stream.then((stream) => {
 				if (stream) {
-					stream.getTracks().forEach((track) => {
+					for (const track of stream.getTracks()) {
 						track.stop();
-					});
+					}
 				}
 			});
 		};
@@ -49,17 +49,15 @@ export const micMediaStreamAtom = createMediaStreamAtom(
 	(p: MediaStreamConstraints["audio"] | undefined) => {
 		if (p) {
 			return navigator.mediaDevices.getUserMedia({ audio: p });
-		} else {
-			return Promise.resolve(undefined);
 		}
+		return Promise.resolve(undefined);
 	},
 );
 export const cameraMediaStreamAtom = createMediaStreamAtom(
 	(p: MediaStreamConstraints["video"] | undefined) => {
 		if (p) {
 			return navigator.mediaDevices.getUserMedia({ video: p });
-		} else {
-			return Promise.resolve(undefined);
 		}
+		return Promise.resolve(undefined);
 	},
 );
