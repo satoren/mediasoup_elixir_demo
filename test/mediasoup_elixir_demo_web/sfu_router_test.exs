@@ -53,6 +53,7 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
 
     {:ok, transport} = SFURouter.create_webrtc_transport(router_group1)
     {:ok, producer} = WebRtcTransport.produce(transport, audio_producer_options())
+    :ok = SFURouter.register_producer(router_group1, producer)
 
     {:ok, transport2} = SFURouter.create_webrtc_transport(router_group2)
 
@@ -65,6 +66,14 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
       })
   end
 
+  test "pipe consume fails for unregistered producer" do
+    group_id = "unregistered producer"
+    {:ok, router_group1} = SFURouter.start(group_id)
+    Process.link(router_group1)
+
+    assert {:error, _} = SFURouter.try_pipe_consume(router_group1, "unknown-producer-id")
+  end
+
   test "close pipe producer/consumer when source producer closed" do
     group_id = "room_id2"
     {:ok, router_group1} = SFURouter.start(group_id)
@@ -73,6 +82,7 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
     Process.link(router_group2)
     {:ok, transport} = SFURouter.create_webrtc_transport(router_group1)
     {:ok, producer} = WebRtcTransport.produce(transport, audio_producer_options())
+    :ok = SFURouter.register_producer(router_group1, producer)
 
     {:ok, transport2} = SFURouter.create_webrtc_transport(router_group2)
 
@@ -102,6 +112,7 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
     Process.link(router_group2)
     {:ok, transport} = SFURouter.create_webrtc_transport(router_group1)
     {:ok, producer} = WebRtcTransport.produce(transport, audio_producer_options())
+    :ok = SFURouter.register_producer(router_group1, producer)
 
     {:ok, transport2} = SFURouter.create_webrtc_transport(router_group2)
 
@@ -146,6 +157,7 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
 
     {:ok, transport} = SFURouter.create_webrtc_transport(router_group3)
     {:ok, producer} = WebRtcTransport.produce(transport, audio_producer_options())
+    :ok = SFURouter.register_producer(router_group3, producer)
 
     {:ok, transport2} = SFURouter.create_webrtc_transport(router_group2)
 
