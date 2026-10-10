@@ -43,7 +43,7 @@ defmodule MediasoupElixirDemoWeb do
         layouts: [html: MediasoupElixirDemoWeb.Layouts]
 
       import Plug.Conn
-      import MediasoupElixirDemoWeb.Gettext
+      use Gettext, backend: MediasoupElixirDemoWeb.Gettext
 
       unquote(verified_routes())
     end
@@ -85,7 +85,7 @@ defmodule MediasoupElixirDemoWeb do
       import Phoenix.HTML
       # Core UI components and translation
       import MediasoupElixirDemoWeb.CoreComponents
-      import MediasoupElixirDemoWeb.Gettext
+      use Gettext, backend: MediasoupElixirDemoWeb.Gettext
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

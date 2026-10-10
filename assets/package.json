@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "watch": "vite build --watch",
-    "lint": "npx @biomejs/biome lint ./src" ,
-    "format": "npx @biomejs/biome format --write ./src" ,
+    "lint": "npx @biomejs/biome lint ./src",
+    "format": "npx @biomejs/biome format --write ./src",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,7 +21,7 @@
     "jotai": "^2.6.3",
     "jotai-effect": "^0.4.0",
     "lucide-react": "^0.336.0",
-    "mediasoup-client": "^3.7.2",
+    "mediasoup-client": "~3.7.2",
     "phoenix": "^1.7.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -42,6 +42,6 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "vite": "^6.4.3"
   }
 }
