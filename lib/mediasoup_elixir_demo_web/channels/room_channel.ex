@@ -198,7 +198,9 @@ defmodule MediasoupElixirDemoWeb.RoomChannel do
              paused: Map.get(payload, "paused", false)
            }) do
       # TODO: Should it be done in a library?
-      #      Consumer.event(consumer, consumer.pid, [:on_close])
+      # Stop the consumer process when it is closed by its producer or transport.
+      Consumer.event(consumer, consumer.pid, [:on_close])
+      SFURouter.track_consumer(socket.assigns.router, consumer)
 
       {:reply,
        {:ok,
@@ -320,7 +322,7 @@ defmodule MediasoupElixirDemoWeb.RoomChannel do
         {:ok, consumer}
 
       {:error, _reason} ->
-        case SFURouter.try_pipe_consume(router, consumer_option) do
+        case SFURouter.try_pipe_consume(router, consumer_option.producer_id) do
           :ok ->
             WebRtcTransport.consume(transport, consumer_option)
 
