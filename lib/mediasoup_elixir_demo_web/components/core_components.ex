@@ -17,7 +17,7 @@ defmodule MediasoupElixirDemoWeb.CoreComponents do
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
-  import MediasoupElixirDemoWeb.Gettext
+  use Gettext, backend: MediasoupElixirDemoWeb.Gettext
 
   @doc """
   Renders a modal.

@@ -5,7 +5,7 @@ defmodule MediasoupElixirDemoWeb.Gettext do
   By using [Gettext](https://hexdocs.pm/gettext),
   your module gains a set of macros for translations, for example:
 
-      import MediasoupElixirDemoWeb.Gettext
+      use Gettext, backend: MediasoupElixirDemoWeb.Gettext
 
       # Simple translation
       gettext("Here is the string to translate")
@@ -20,5 +20,5 @@ defmodule MediasoupElixirDemoWeb.Gettext do
 
   See the [Gettext Docs](https://hexdocs.pm/gettext) for detailed usage.
   """
-  use Gettext, otp_app: :mediasoup_elixir_demo
+  use Gettext.Backend, otp_app: :mediasoup_elixir_demo
 end
