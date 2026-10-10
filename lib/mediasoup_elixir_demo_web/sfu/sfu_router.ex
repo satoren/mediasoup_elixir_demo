@@ -176,6 +176,16 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
   end
 
   def handle_call(
+        {:start_consume_to_pipe, %Consumer.Options{producer_id: producer_id}, _pid},
+        _from,
+        %{pipe_producers: pipe_producers} = state
+      )
+      when is_map_key(pipe_producers, producer_id) do
+    # Only the router owning the source producer serves pipes, so pipes never chain.
+    {:reply, {:error, :not_source_router}, state, @timeout}
+  end
+
+  def handle_call(
         {:start_consume_to_pipe, consumer_option, pid},
         _from,
         state
@@ -189,8 +199,6 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
         paused: Consumer.producer_paused?(consumer)
       }
 
-      # Consumers of a pipe producer may be pipe consumers for another router (multi-stage pipe).
-      state = track_pipe_consumer(state, consumer)
       {:reply, {:ok, {consumer, pipe_produce_option, self()}}, state, @timeout}
     else
       :error ->
@@ -434,14 +442,9 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
       rtp_capabilities: Router.rtp_capabilities(state.router)
     }
 
-    # TODO: Pipe request to all group processes. This is inefficient because it may result in a multi-stage pipe.
-
-    local_members = RouterGroup.get_local_members(state.room_id)
-
     pipe_consume_result =
-      local_members
-      |> take_pipe_consumer(option) ||
-        (RouterGroup.get_members(state.room_id) -- local_members) |> take_pipe_consumer(option)
+      RouterGroup.get_members(state.room_id)
+      |> take_pipe_consumer(option)
 
     with {:ok, {consumer, pipe_produce_option, pipe_source_pid}} <- pipe_consume_result,
          {:ok, transport} <- Map.fetch(state.pipe_transports, pipe_source_pid),

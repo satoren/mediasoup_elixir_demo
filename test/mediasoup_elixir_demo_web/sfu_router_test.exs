@@ -178,6 +178,14 @@ defmodule MediasoupElixirDemoWeb.SFURouterTest do
         producer_id: producer.id,
         rtp_capabilities: consumer_device_capabilities()
       })
+
+    # Every pipe comes directly from the source router (no multi-stage pipe).
+    assert length(consumer_ids(router_group3, producer.id)) == 3
+
+    # Other routers only have their own WebRTC consumer, no pipe consumers.
+    for router <- [router_group1, router_group2, router_group4] do
+      assert [_] = consumer_ids(router, producer.id)
+    end
   end
 
   defp producer_consumer_ids(router) do
