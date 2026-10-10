@@ -7,6 +7,8 @@ defmodule MediasoupElixirDemo.Application do
 
   @impl true
   def start(_type, _args) do
+    MediasoupElixirDemoWeb.SFURouter.init_producer_registry()
+
     children = [
       MediasoupElixirDemoWeb.Telemetry,
       MediasoupElixirDemoWeb.RouterGroup,

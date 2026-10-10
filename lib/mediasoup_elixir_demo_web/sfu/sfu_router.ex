@@ -48,6 +48,21 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
 
   @timeout 60_000
 
+  # Cluster-wide registry of producer_id => {producer pid, router pid owning the producer}.
+  @producer_scope :sfu_producers
+
+  def init_producer_registry() do
+    :syn.add_node_to_scopes([@producer_scope])
+  end
+
+  @doc """
+  Registers a producer created on the router's transports so that other routers
+  can pipe it directly from this router. Unregistered automatically when the producer closes.
+  """
+  def register_producer(router, %Producer{} = producer) do
+    :syn.register(@producer_scope, producer.id, producer.pid, router)
+  end
+
   def get_or_start(room_id) do
     with [pid | _] <- RouterGroup.get_local_members(room_id),
          :ok <- GenServer.call(pid, {:put_user, self()}) do
@@ -189,8 +204,6 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
         paused: Consumer.producer_paused?(consumer)
       }
 
-      # Consumers of a pipe producer may be pipe consumers for another router (multi-stage pipe).
-      state = track_pipe_consumer(state, consumer)
       {:reply, {:ok, {consumer, pipe_produce_option, self()}}, state, @timeout}
     else
       :error ->
@@ -407,44 +420,17 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
     end
   end
 
-  def take_pipe_consumer(pids, option) do
-    from = self()
-
-    pids
-    |> Enum.reject(fn pid -> pid === from end)
-    |> Task.async_stream(fn pid ->
-      GenServer.call(pid, {:start_consume_to_pipe, option, from})
-    end)
-    |> Stream.map(fn
-      {:ok, success} -> success
-      error -> error
-    end)
-    |> Stream.filter(fn
-      {:ok, _} -> true
-      _ -> false
-    end)
-    |> Stream.take(1)
-    |> Enum.to_list()
-    |> List.first()
-  end
-
   defp start_pipe_produce(state, producer_id) do
     option = %Consumer.Options{
       producer_id: producer_id,
       rtp_capabilities: Router.rtp_capabilities(state.router)
     }
 
-    # TODO: Pipe request to all group processes. This is inefficient because it may result in a multi-stage pipe.
-
-    local_members = RouterGroup.get_local_members(state.room_id)
-
-    pipe_consume_result =
-      local_members
-      |> take_pipe_consumer(option) ||
-        (RouterGroup.get_members(state.room_id) -- local_members) |> take_pipe_consumer(option)
-
-    with {:ok, {consumer, pipe_produce_option, pipe_source_pid}} <- pipe_consume_result,
-         {:ok, transport} <- Map.fetch(state.pipe_transports, pipe_source_pid),
+    with {_producer_pid, source_router} <- :syn.lookup(@producer_scope, producer_id),
+         true <- source_router !== self(),
+         {:ok, {consumer, pipe_produce_option, _}} <-
+           request_consume_to_pipe(source_router, option),
+         {:ok, transport} <- Map.fetch(state.pipe_transports, source_router),
          {:ok, producer} <- Transport.produce(transport, pipe_produce_option) do
       # Pipe events from the pipe Consumer to the pipe Producer.
       Consumer.event(consumer, producer.pid, [:on_close, :on_pause, :on_resume])
@@ -454,6 +440,13 @@ defmodule MediasoupElixirDemoWeb.SFURouter do
     else
       _ -> {:error, "Pipe consume failed"}
     end
+  end
+
+  defp request_consume_to_pipe(source_router, option) do
+    GenServer.call(source_router, {:start_consume_to_pipe, option, self()})
+  catch
+    # The source router went down.
+    :exit, reason -> {:error, reason}
   end
 
   defp get_listen_ip(other_router_pid) when node(other_router_pid) === node() do

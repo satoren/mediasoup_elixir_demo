@@ -52,6 +52,7 @@ defmodule MediasoupElixirDemo.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.2"},
       {:mediasoup_elixir, "~> 0.9.2"},
+      {:syn, "~> 3.3"},
       {:rustler, ">= 0.0.0", optional: true}
     ]
   end

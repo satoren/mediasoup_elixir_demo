@@ -109,6 +109,7 @@ defmodule MediasoupElixirDemoWeb.RoomChannel do
            }) do
       # TODO: Should it be done in a library?
       #      Producer.event(producer, producer.pid, [:on_close])
+      SFURouter.register_producer(socket.assigns.router, producer)
 
       UserPresence.track(
         producer.pid,
