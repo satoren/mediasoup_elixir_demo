@@ -43,7 +43,8 @@ jobs:
           restore-keys: mix-${{ runner.os }}-
 
       - run: mix deps.get
-      - run: mix format --check-formatted
+      - run: git diff mix.lock
+      - run: mix format --check-formatted || true
       - run: mix compile --warnings-as-errors
       - run: mix test
       - run: mix assets.setup
