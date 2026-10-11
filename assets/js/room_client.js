@@ -1,19 +1,56 @@
 import { Device } from "mediasoup-client";
 
+// Raised for requests that were cut off because the client was closed, e.g.
+// when the LiveView socket disconnected. These are retried after reconnecting.
+export class ClientClosedError extends Error {
+	constructor() {
+		super("RoomClient closed");
+		this.name = "ClientClosedError";
+	}
+}
+
 // mediasoup-client wrapper. `push(event, payload)` sends a signaling event to
 // the RoomLive process and resolves with its reply.
 export class RoomClient {
 	constructor(push) {
 		this.push = push;
+		this.closed = false;
+		this.pending = new Set();
+		this.transports = [];
 		this.ready = this.init();
 	}
 
-	async request(event, payload = {}) {
-		const reply = await this.push(event, payload);
-		if (reply?.error) {
-			throw new Error(`${event}: ${reply.error}`);
+	request(event, payload = {}) {
+		if (this.closed) {
+			return Promise.reject(new ClientClosedError());
 		}
-		return reply;
+		return new Promise((resolve, reject) => {
+			const pending = { reject };
+			this.pending.add(pending);
+			this.push(event, payload).then((reply) => {
+				if (!this.pending.delete(pending)) {
+					return;
+				}
+				if (reply?.error) {
+					reject(new Error(`${event}: ${reply.error}`));
+				} else {
+					resolve(reply);
+				}
+			});
+		});
+	}
+
+	// Closes the transports, and with them all producers and consumers, and
+	// rejects the requests still waiting for a reply.
+	close() {
+		this.closed = true;
+		for (const { reject } of this.pending) {
+			reject(new ClientClosedError());
+		}
+		this.pending.clear();
+		for (const transport of this.transports) {
+			transport.close();
+		}
 	}
 
 	async init() {
@@ -32,6 +69,11 @@ export class RoomClient {
 			direction === "send"
 				? this.device.createSendTransport(params)
 				: this.device.createRecvTransport(params);
+		this.transports.push(transport);
+		if (this.closed) {
+			transport.close();
+			throw new ClientClosedError();
+		}
 
 		transport.on("connect", ({ dtlsParameters }, callback, errback) => {
 			this.request("connectWebRtcTransport", {

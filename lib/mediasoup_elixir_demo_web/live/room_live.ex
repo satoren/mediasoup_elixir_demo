@@ -44,7 +44,15 @@ defmodule MediasoupElixirDemoWeb.RoomLive do
 
       {:ok, router} = SFURouter.get_or_start(room_id)
 
-      {:ok, socket |> assign(router: router) |> assign_users()}
+      # After a reconnect the client sends the microphone/camera state it kept,
+      # and turns the devices back on by itself. Connect params are sent in the
+      # socket URL, so the booleans arrive as strings.
+      media = get_connect_params(socket)["media"] || %{}
+
+      {:ok,
+       socket
+       |> assign(router: router, audio: on?(media["audio"]), video: on?(media["video"]))
+       |> assign_users()}
     else
       {:ok, socket}
     end
@@ -131,6 +139,8 @@ defmodule MediasoupElixirDemoWeb.RoomLive do
     </button>
     """
   end
+
+  defp on?(value), do: value in [true, "true"]
 
   defp short_id(user_id), do: "Guest " <> String.slice(user_id, 0, 6)
 

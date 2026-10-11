@@ -88,6 +88,16 @@ defmodule MediasoupElixirDemoWeb.RoomLiveTest do
     assert_push_event(view, "media", %{audio: false, video: true})
   end
 
+  test "restores media toggles from connect params", %{conn: conn, room: room} do
+    {:ok, view, _html} =
+      conn
+      |> put_connect_params(%{"media" => %{"audio" => "true", "video" => "false"}})
+      |> live("/?roomId=#{room}")
+
+    assert view |> element(~s(#toggle-audio[aria-pressed="true"])) |> has_element?()
+    assert view |> element(~s(#toggle-video[aria-pressed="false"])) |> has_element?()
+  end
+
   test "media_error turns the device off", %{view: view} do
     view |> element("#toggle-video") |> render_click()
     assert_push_event(view, "media", %{video: true})

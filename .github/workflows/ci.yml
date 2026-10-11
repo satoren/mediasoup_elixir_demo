@@ -117,7 +117,7 @@ jobs:
 
       - name: Server log
         if: always()
-        run: cat phx.log
+        run: tail -n 150 phx.log
 
       - uses: actions/upload-artifact@v4
         if: failure()
