@@ -38,6 +38,8 @@ defmodule MediasoupElixirDemo.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.1.1",
@@ -65,10 +67,16 @@ defmodule MediasoupElixirDemo.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "assets.setup"],
-      "assets.setup": ["cmd --cd assets yarn install"],
+      setup: ["deps.get", "assets.setup", "assets.build"],
+      "assets.setup": [
+        "tailwind.install --if-missing",
+        "esbuild.install --if-missing",
+        "cmd --cd assets yarn install"
+      ],
+      "assets.build": ["tailwind mediasoup_elixir_demo", "esbuild mediasoup_elixir_demo"],
       "assets.deploy": [
-        "cmd --cd assets yarn build",
+        "tailwind mediasoup_elixir_demo --minify",
+        "esbuild mediasoup_elixir_demo --minify",
         "phx.digest"
       ]
     ]

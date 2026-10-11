@@ -1,24 +1,25 @@
 # MediasoupElixirDemo
 
-A multi-party voice/video chat demo built with [mediasoup-elixir](https://github.com/oviceinc/mediasoup-elixir) and Phoenix.
+A multi-party voice/video chat demo built with [mediasoup-elixir](https://github.com/oviceinc/mediasoup-elixir) and Phoenix LiveView.
 Rooms can span several Elixir nodes: each node runs its own mediasoup router and media is piped between routers on demand.
 
 ## Requirements
 
 - Elixir 1.14+ (CI uses Elixir 1.16 / OTP 26)
-- Node.js (CI uses 22) and Yarn 1.x
+- Node.js (CI uses 22) and Yarn 1.x, used to install [mediasoup-client](https://www.npmjs.com/package/mediasoup-client).
+  JavaScript and CSS are built with Phoenix's standard esbuild and Tailwind tooling.
 - A platform with a precompiled mediasoup NIF (Linux x86_64/aarch64 gnu/musl, macOS, ...).
   On other platforms the NIF is built from source, which requires Rust.
 
 ## Getting started
 
 ```sh
-mix setup          # mix deps.get + yarn install in assets/
+mix setup          # deps, esbuild/tailwind, yarn install in assets/, build assets
 mix phx.server     # or: iex -S mix phx.server
 ```
 
-Open [`localhost:4000`](http://localhost:4000).
-In development the endpoint runs `yarn run watch`, which builds the frontend into `priv/static/`.
+Open [`localhost:4000`](http://localhost:4000) and turn on the microphone or camera with the buttons at the bottom.
+In development the endpoint runs esbuild and Tailwind in watch mode.
 
 Join a specific room with the `roomId` query parameter, e.g. `http://localhost:4000/?roomId=myroom` (default: `lobby`).
 
@@ -49,14 +50,18 @@ Build the frontend with `mix assets.deploy`. Note that the announced IPs in `con
 ## Architecture
 
 ```
-Browser ── Phoenix channel "room:<id>" ── RoomChannel ── SFURouter (per room, per node)
+Browser ── LiveView socket ── RoomLive ── SFURouter (per room, per node)
                                                            │  mediasoup Worker / Router / WebRtcServer
                                                            │
                          RouterGroup (:pg) ── PipeTransports between every pair of routers in the room
 ```
 
-- **`RoomChannel`** handles signaling for one user: WebRTC transports, produce/consume, pause/resume and so on.
-  Users and their producers are tracked with Phoenix Presence (`UserPresence`).
+- **`RoomLive`** renders a room: the other users and their microphone/camera from Phoenix Presence (`UserPresence`), and the device toggles.
+  It also handles the mediasoup signaling for its user (WebRTC transports, produce/consume, pause/resume and so on).
+- **JS hooks** (`assets/js/hooks.js`): the `Room` hook owns the [mediasoup-client](https://mediasoup.org/documentation/v3/mediasoup-client/) device and transports,
+  and starts/stops the local microphone and camera when `RoomLive` pushes a `media` event.
+  Each remote `<audio>`/`<video>` element has a `Consumer` hook that consumes its producer.
+  Signaling goes through `pushEvent` with replies over the LiveView socket.
 - **`SFURouter`** is a GenServer owning a mediasoup worker and router.
   Each node normally runs one router per room, which stops about a minute after its last user leaves.
 - **`RouterGroup`** (`:pg`) groups the routers of a room across the cluster.
@@ -72,10 +77,16 @@ mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
 
+mix assets.build
+
 cd assets
 yarn lint
-npx @biomejs/biome format ./src
-yarn build
+npx @biomejs/biome format ./js ./e2e
+
+# End-to-end tests with Playwright against a running `mix phx.server`.
+# Two browsers join a room and check that audio and video are received.
+npx playwright install chromium
+yarn e2e
 ```
 
-The same checks run in GitHub Actions (`.github/workflows/ci.yml`).
+The same checks, including the end-to-end tests, run in GitHub Actions (`.github/workflows/ci.yml`).
