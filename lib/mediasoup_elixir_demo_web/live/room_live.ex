@@ -81,8 +81,7 @@ defmodule MediasoupElixirDemoWeb.RoomLive do
                 autoplay
                 playsinline
                 muted
-              >
-              </video>
+              ></video>
               <audio
                 :if={producer.kind == "audio"}
                 id={"consumer-#{producer.id}"}
@@ -90,8 +89,7 @@ defmodule MediasoupElixirDemoWeb.RoomLive do
                 phx-update="ignore"
                 data-producer-id={producer.id}
                 autoplay
-              >
-              </audio>
+              ></audio>
             </div>
           </div>
         </div>
