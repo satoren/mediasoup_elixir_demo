@@ -17,7 +17,7 @@ defmodule MediasoupElixirDemoWeb.Router do
   scope "/", MediasoupElixirDemoWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", RoomLive
   end
 
   # Other scopes may use custom stacks.

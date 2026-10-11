@@ -21,6 +21,28 @@ config :mediasoup_elixir_demo, MediasoupElixirDemoWeb.Endpoint,
   pubsub_server: MediasoupElixirDemo.PubSub,
   live_view: [signing_salt: "ExUXmSsU"]
 
+# Configure esbuild (the version is required)
+config :esbuild,
+  version: "0.25.4",
+  mediasoup_elixir_demo: [
+    args:
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+  ]
+
+# Configure tailwind (the version is required)
+config :tailwind,
+  version: "3.4.17",
+  mediasoup_elixir_demo: [
+    args: ~w(
+      --config=tailwind.config.js
+      --input=css/app.css
+      --output=../priv/static/assets/app.css
+    ),
+    cd: Path.expand("../assets", __DIR__)
+  ]
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",

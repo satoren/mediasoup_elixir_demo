@@ -15,7 +15,9 @@ config :mediasoup_elixir_demo, MediasoupElixirDemoWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "8h20Fb9f3eOmwli+gOcWuWHOopaOyLLDcN/zrfv4k4Sph+mEC2D/Yjti6Hzmtove",
   watchers: [
-    yarn: ["run", "watch", cd: Path.expand("../assets", __DIR__)]
+    esbuild:
+      {Esbuild, :install_and_run, [:mediasoup_elixir_demo, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:mediasoup_elixir_demo, ~w(--watch)]}
   ]
 
 config :mediasoup_elixir_demo, MediasoupElixirDemoWeb.SFURouter,

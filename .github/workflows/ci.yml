@@ -27,6 +27,12 @@ jobs:
           elixir-version: "1.16.3"
           otp-version: "26.2"
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: assets/yarn.lock
+
       - name: Cache deps and build
         uses: actions/cache@v4
         with:
@@ -40,6 +46,8 @@ jobs:
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: mix test
+      - run: mix assets.setup
+      - run: mix assets.build
 
   frontend:
     name: Frontend
@@ -59,6 +67,60 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn lint
       - name: Format check
-        run: npx @biomejs/biome format ./src
-      - name: Type check & build
-        run: yarn build
+        run: npx @biomejs/biome format ./js ./e2e tailwind.config.js playwright.config.js
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.16.3"
+          otp-version: "26.2"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: assets/yarn.lock
+
+      - name: Cache deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-dev-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-dev-${{ runner.os }}-
+
+      - run: mix deps.get
+      - run: mix assets.setup
+      - run: mix assets.build
+      - run: mix compile
+
+      - name: Start server
+        run: |
+          mix phx.server > phx.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:4000/ > /dev/null && exit 0
+            sleep 1
+          done
+          cat phx.log
+          exit 1
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: assets
+      - run: yarn e2e
+        working-directory: assets
+
+      - name: Server log
+        if: always()
+        run: cat phx.log
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: assets/test-results
