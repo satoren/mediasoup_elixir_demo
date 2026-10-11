@@ -1,7 +1,7 @@
 import "phoenix_html";
 import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
-import { Hooks } from "./hooks";
+import { Hooks, connectParams } from "./hooks";
 
 const csrfToken = document
 	.querySelector("meta[name='csrf-token']")
@@ -9,7 +9,7 @@ const csrfToken = document
 
 const liveSocket = new LiveSocket("/live", Socket, {
 	longPollFallbackMs: 2500,
-	params: { _csrf_token: csrfToken },
+	params: () => ({ _csrf_token: csrfToken, ...connectParams() }),
 	hooks: Hooks,
 });
 

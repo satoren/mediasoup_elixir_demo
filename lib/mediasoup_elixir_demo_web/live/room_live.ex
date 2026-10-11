@@ -44,7 +44,14 @@ defmodule MediasoupElixirDemoWeb.RoomLive do
 
       {:ok, router} = SFURouter.get_or_start(room_id)
 
-      {:ok, socket |> assign(router: router) |> assign_users()}
+      # After a reconnect the client sends the microphone/camera state it kept,
+      # and turns the devices back on by itself.
+      media = get_connect_params(socket)["media"] || %{}
+
+      {:ok,
+       socket
+       |> assign(router: router, audio: media["audio"] == true, video: media["video"] == true)
+       |> assign_users()}
     else
       {:ok, socket}
     end

@@ -62,6 +62,8 @@ Browser ── LiveView socket ── RoomLive ── SFURouter (per room, per n
   and starts/stops the local microphone and camera when `RoomLive` pushes a `media` event.
   Each remote `<audio>`/`<video>` element has a `Consumer` hook that consumes its producer.
   Signaling goes through `pushEvent` with replies over the LiveView socket.
+  When the LiveView socket reconnects, the hooks recreate the transports, produce the still-running local tracks again and re-consume,
+  without reloading the page; `RoomLive` restores the microphone/camera toggles from the connect params.
 - **`SFURouter`** is a GenServer owning a mediasoup worker and router.
   Each node normally runs one router per room, which stops about a minute after its last user leaves.
 - **`RouterGroup`** (`:pg`) groups the routers of a room across the cluster.
