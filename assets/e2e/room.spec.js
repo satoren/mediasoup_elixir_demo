@@ -57,9 +57,12 @@ test("microphone and camera are delivered to other users", async ({
 	await expect(video).toHaveCount(1);
 });
 
-// Drops the LiveView WebSocket. Phoenix reconnects by itself.
+// Disconnects the LiveView socket and connects it again.
 const dropConnection = async (page) => {
-	await page.evaluate(() => window.liveSocket.getSocket().conn.close());
+	await page.evaluate(async () => {
+		await new Promise((resolve) => window.liveSocket.disconnect(resolve));
+		window.liveSocket.connect();
+	});
 	await expect(page.locator("[data-phx-main].phx-connected")).toBeAttached();
 };
 
